@@ -82,5 +82,5 @@ class Environment():
         
 if __name__ == "__main__":
     env = Environment()
-    env.env_test()
-    # env.invoke_env()
+    # env.env_test()
+    env.invoke_env()

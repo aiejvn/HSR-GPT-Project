@@ -7,6 +7,7 @@ class ScreenReader():
     def __init__(self, debug=False):
         # Shrunken icons of just the character (pulled from online)
         # Should be similar size to that of bounding box for action space
+        self.img_mode = 'RGB' # RGB or CMYK
         self.icons = {
             "AVENTURINE":"./icons/aventurine-character_icon.png",
             "BRONYA":"./icons/bronya-item-2_icon.png",
@@ -21,7 +22,10 @@ class ScreenReader():
             char_icon.thumbnail(size=[94, 83], resample=Image.LANCZOS)
             
             # Create new blank canvas for image
-            new_icon = Image.new('RGB', [94, 83], color=(255, 255, 255))
+            if self.img_mode == 'RGB':
+                new_icon = Image.new('RGB', [94, 83], color=(255, 255, 255))
+            elif self.img_mode == 'CMYK':
+                new_icon = Image.new('CMYK', [94, 83], color=(0, 0, 0, 0))
             
             # Get offset to center image, paste image onto new canvas
             x_offset = (94 - char_icon.size[0]) // 2
@@ -46,7 +50,7 @@ class ScreenReader():
         self.debug = debug
         
     def ssim_read(self, path: str) -> str:
-        img = Image.open(path).convert('RGB')
+        img = Image.open(path).convert(self.img_mode)
         current_turn = img.crop([73, 17, 73+94, 17+83]) # [left bound, up bound, right bound, low bound]
         
         # current_turn.show()
@@ -88,7 +92,7 @@ class ScreenReader():
         # Measure how much white (shield) we see in healthbars
         # If all healthbars have some white, return healthy
         # Otherwise, return unhealthy
-        img = Image.open(path).convert('RGB')
+        img = Image.open(path).convert(self.img_mode)
         for healthbar in self.healthbars:
             shield_bar = img.crop(healthbar)
             # if self.debug: shield_bar.show()
@@ -97,7 +101,9 @@ class ScreenReader():
             n = 0
             for row in shield_bar:
                 for elem in row:
-                    if np.equal(elem, np.array([255, 255, 255])).all():
+                    if self.img_mode == 'RGB' and np.equal(elem, np.array([255, 255, 255])).all():
+                        n += 1
+                    elif self.img_mode == 'CMYK' and np.equal(elem, np.array([0, 0, 0, 0])).all():
                         n += 1
             if self.debug: print(n)
             if n < 36: return False
