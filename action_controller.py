@@ -60,7 +60,8 @@ class Environment():
             print(f"Current character is {cur_char}")
             if cur_char == 'Nobody':
                 print("Nobody in team is about to go.")
-                break
+                # break
+                continue
             is_healthy = self.screenreader.read_team_health(self.screenshot_path)
             print(f"Are we healthy?: {is_healthy}\nWe have {self.sp} skill points currently.")
             
@@ -84,3 +85,5 @@ if __name__ == "__main__":
     env = Environment()
     # env.env_test()
     env.invoke_env()
+    
+    

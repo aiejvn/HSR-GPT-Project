@@ -1,13 +1,14 @@
 from skimage.metrics import structural_similarity as ssim
 from PIL import Image
 import numpy as np
-import matplotlib.pyplot as plt
+import random
+import math
 
 class ScreenReader():
     def __init__(self, debug=False):
         # Shrunken icons of just the character (pulled from online)
         # Should be similar size to that of bounding box for action space
-        self.img_mode = 'RGB' # RGB or CMYK
+        self.img_mode = 'CMYK' # RGB or CMYK
         self.icons = {
             "AVENTURINE":"./icons/aventurine-character_icon.png",
             "BRONYA":"./icons/bronya-item-2_icon.png",
@@ -50,7 +51,10 @@ class ScreenReader():
         self.debug = debug
         
     def ssim_read(self, path: str) -> str:
-        img = Image.open(path).convert(self.img_mode)
+        img = Image.open(path)
+        if self.img_mode == 'RGB': img = img.convert('RGB')
+        elif self.img_mode == 'CMYK': img = img.convert('CMYK')
+        
         current_turn = img.crop([73, 17, 73+94, 17+83]) # [left bound, up bound, right bound, low bound]
         
         # current_turn.show()
@@ -58,22 +62,40 @@ class ScreenReader():
         current_icon = np.array(current_turn) # np array for ssim calc
         # current_icon = cv2.resize(current_icon, self.target_dim)
         
-        cur_char = "Nobody"
-        best_ssim = 0.27 # we want ssim values close to 0 (like cosine similarity). 
-                        # also, in testing it seems that correct ssim scores are all under 0.28. may need tweaking
+        # TODO: Change to weighted random pick based on ssim indexes
+        # cur_char = "Nobody"
+        weights = []
+        # best_ssim = 0.27 # we want ssim values close to 0 (like cosine similarity). 
+        #                 # also, in testing it seems that correct ssim scores are all under 0.28. may need tweaking
         if self.debug: print("SSIM Scores: (Lower is better)")
         
         for char in self.transformed_icons:
+            
             # char_icon = cv2.resize(char_icon, self.target_dim)
             char_icon = self.transformed_icons[char]
             
             ssim_index, _ = ssim(current_icon, char_icon, full=True, channel_axis=2)
-            if ssim_index < best_ssim:
-                best_ssim = ssim_index
-                cur_char = char
+            ssim_index = abs(ssim_index)
+            # if ssim_index < best_ssim:
+            #     best_ssim = ssim_index
+            #     cur_char = char
+            weights.append(1 - ssim_index) # prioritize lower ssim
             if self.debug: print(f"{char}: {ssim_index}")
         
-        return cur_char
+        sum_w = sum(weights)
+        remaining = math.ceil(sum_w) - sum_w
+        weights.append(remaining) # chance of 'Nobody'
+        weights = weights / sum(weights)
+        population = ['AVENTURINE', 'BRONYA', 'SPARKLE', 'BLADE', 'NOBODY']
+        cur_char = random.choices(population, weights, k=1)
+        
+        if self.debug:
+            print("Weights for char selection")
+            res = dict(zip(population, weights))
+            for key in res:
+                print(f"{key}: {res[key]}")
+        
+        return cur_char[0]
 
     def read_action_order(self, path: str) -> str:
         # Use cv2 to read whoever is currently going in action order
@@ -126,3 +148,4 @@ if __name__ == '__main__':
         screen_reader = ScreenReader(debug=True)
         print(f"It is {screen_reader.read_action_order(scrnsht)}'s turn.")
         print(f"Are we healthy? {screen_reader.read_team_health(scrnsht)}")
+        print("---------------------------")
