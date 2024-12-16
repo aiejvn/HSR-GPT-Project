@@ -14,29 +14,8 @@ class ScreenReader():
             "BLADE":"./icons/blade-character_icon.png",
         }
         
-        # Bounding boxes where we can numbers for shield
-        # Shield starts on left so we only need to read small left portion
-        self.healthbars = [
-            [152, 1084, 152+34, 1084+15],
-            [378, 1084, 378+34, 1084+15],
-            [604, 1084, 604+34, 1084+15],
-            [830, 1084, 830+34, 1084+15],
-        ]
-        self.debug = debug
+        self.transformed_icons = {} # stores numpy array versions of icons scaled to fit the action space
         
-    def ssim_read(self, path: str) -> str:
-        img = Image.open(path)
-        current_turn = img.crop([73, 17, 73+94, 17+83]) # [left bound, up bound, right bound, low bound]
-        
-        # current_turn.show()
-        
-        current_icon = np.array(current_turn) # np array for ssim calc
-        # current_icon = cv2.resize(current_icon, self.target_dim)
-        
-        cur_char = "Nobody"
-        best_ssim = 0.27 # we want ssim values close to 0 (like cosine similarity). 
-                        # also, in testing it seems that correct ssim scores are all under 0.28. may need tweaking
-        if self.debug: print("SSIM Scores: (Lower is better)")
         for char in self.icons:
             char_icon = Image.open(self.icons[char])
             char_icon.thumbnail(size=[94, 83], resample=Image.LANCZOS)
@@ -53,7 +32,36 @@ class ScreenReader():
             # char_icon.show()
                         
             char_icon = np.array(char_icon)
+            self.transformed_icons[char] = char_icon
+        
+        
+        # Bounding boxes where we can numbers for shield
+        # Shield starts on left so we only need to read small left portion
+        self.healthbars = [
+            [152, 1084, 152+34, 1084+15],
+            [378, 1084, 378+34, 1084+15],
+            [604, 1084, 604+34, 1084+15],
+            [830, 1084, 830+34, 1084+15],
+        ]
+        self.debug = debug
+        
+    def ssim_read(self, path: str) -> str:
+        img = Image.open(path).convert('RGB')
+        current_turn = img.crop([73, 17, 73+94, 17+83]) # [left bound, up bound, right bound, low bound]
+        
+        # current_turn.show()
+        
+        current_icon = np.array(current_turn) # np array for ssim calc
+        # current_icon = cv2.resize(current_icon, self.target_dim)
+        
+        cur_char = "Nobody"
+        best_ssim = 0.27 # we want ssim values close to 0 (like cosine similarity). 
+                        # also, in testing it seems that correct ssim scores are all under 0.28. may need tweaking
+        if self.debug: print("SSIM Scores: (Lower is better)")
+        
+        for char in self.transformed_icons:
             # char_icon = cv2.resize(char_icon, self.target_dim)
+            char_icon = self.transformed_icons[char]
             
             ssim_index, _ = ssim(current_icon, char_icon, full=True, channel_axis=2)
             if ssim_index < best_ssim:
@@ -80,7 +88,7 @@ class ScreenReader():
         # Measure how much white (shield) we see in healthbars
         # If all healthbars have some white, return healthy
         # Otherwise, return unhealthy
-        img = Image.open(path)
+        img = Image.open(path).convert('RGB')
         for healthbar in self.healthbars:
             shield_bar = img.crop(healthbar)
             # if self.debug: shield_bar.show()

@@ -41,9 +41,9 @@ class Environment():
         # interpret output, simulate
         # then wait 5-10 seconds (random or fixed - your preference)
         
-        self.alt_tab() 
-        sleep(5) # in case window switching is slow
         if take_shot:
+            self.alt_tab() 
+            sleep(5) # in case window switching is slow
             with mss.mss() as screenshot:
                 try:
                     self.screenshot_path = "./screenshots/cur_shot.png"
@@ -82,5 +82,5 @@ class Environment():
         
 if __name__ == "__main__":
     env = Environment()
-    # env.env_test()
-    env.invoke_env()
+    env.env_test()
+    # env.invoke_env()
