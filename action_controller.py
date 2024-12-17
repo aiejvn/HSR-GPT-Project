@@ -83,7 +83,11 @@ class Environment():
             "BUFF ALLY":["e", "d", "d", "e"], # figuring out how to "find" Blade may be too complex for a non-AI solution. Just stick him at the end and scroll to the end every time.
             "BUFF SELF":["e", "e", "q"], # Blade-exclusive ability. 
             "GIVE ALLIES SHIELD":["e", "e"],
-            "ULTIMATE": ["space"] # ideally the controller knows the correct number and tells us. This is a want-to-have.
+            
+            "AVENTURINE ULT": ["1", "space"],
+            "BRONYA ULT": ["2", "space"],
+            "SPARKLE ULT": ["3", "space"],
+            "BLADE ULT": ["4", "space"],
         }
         self.screenshot_path = None
         self.key_codes = {
@@ -142,13 +146,22 @@ class Environment():
                 is_healthy = self.screenreader.read_team_health(self.screenshot_path)
                 print(f"Are we healthy?: {is_healthy}\nWe have {self.sp} skill points currently.")
                 
-                move_full = self.controller.get_move(char=cur_char, is_health_good=is_healthy, sp=self.sp)
+                skill_available = self.screenreader.read_skill_restriction(self.screenshot_path)
+                print(f"Can we skill?: {skill_available}")
+                
+                ults = self.screenreader.read_ults(self.screenshot_path)
+                for char, is_ready in ults:
+                    print(f"{char}: {is_ready}")
+                
+                move_full = self.controller.get_move(char=cur_char, is_health_good=is_healthy, sp=self.sp, can_skill=skill_available, ult_status=ults)
                 move = self.controller.find_move_in_msg(move_full)
                 print(f"We should do: {move} because {move_full}")
                 if move in ['BUFF ALLY', 'GIVE ALLIES SHIELD', 'BUFF SELF']:
                     self.sp = max(self.sp - 1, 0)
                 elif move == 'WEAK ATTACK ENEMY':
                     self.sp = min(self.sp + 1, 7)
+                elif move == 'SPARKLE ULT':
+                    self.sp = min(self.sp + 4, 7)
                 self.make_move(self.action_keys[move])
             else:
                 print("Nobody in team is about to go.")

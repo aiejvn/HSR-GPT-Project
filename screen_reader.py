@@ -3,6 +3,7 @@ from PIL import Image
 import numpy as np
 import random
 import math
+from typing import List, Tuple
 
 class ScreenReader():
     def __init__(self, debug=False):
@@ -49,6 +50,13 @@ class ScreenReader():
             [830, 1084, 830+34, 1084+15],
         ]
         self.debug = debug
+        
+        self.ultimates = {
+            "AVENTURINE":[252, 987, 252 + 65, 987 + 61],
+            "BRONYA":[478, 986, 478 + 65, 986 + 61],
+            "SPARKLE":[704, 987, 704 + 65, 987 + 61],
+            "BLADE":[927, 987, 927 + 65, 987 + 61],
+        }
         
     def ssim_read(self, path: str) -> str:
         img = Image.open(path)
@@ -133,14 +141,51 @@ class ScreenReader():
             
         return True
 
+    def read_ults(self, path:str) -> List[Tuple[str, bool]]:
+        img = Image.open(path).convert(self.img_mode)
+        res = []
+        for char in self.ultimates:
+            ult_bar = img.crop(self.ultimates[char])
+            # ult_bar.show()
+            ult_bar = np.array(ult_bar)
+            
+            n = 0
+            check_color = [255, 255, 255] if self.img_mode == 'RGB' else [0, 0, 0, 0]
+            acceptable_diff = [30] * 3 if self.img_mode == 'RGB' else [30] * 4
+            for row in ult_bar: # search for white pixels
+                for elem in row:
+                    if (abs(elem - check_color) < acceptable_diff).all():
+                        n += 1
+            if self.debug: print(f"Found this many white pixels for {char} ult:", n)
+            
+            res.append([char, n >= 100]) # many white pixels -> ult art is shining -> ult is ready
+            
+        return res
+    
+    def read_skill_restriction(self, path:str) -> bool:
+        # Check if [241, 212, 152] (RGB) or [0, 12, 37, 5] (CMYK) in skill window (starts at 1782,936, is 46*46 pixel window)
+        img = Image.open(path).convert(self.img_mode)
+        img = img.crop([1786, 941, 1786+37, 941+36])
+        # img.show()
+        img = np.array(img)
+        restricted_color = [99, 60, 45] if self.img_mode == 'RGB' else [14, 42, 102, 0]
+        n = 0
+        for row in img:
+            for elem in row:
+                # print(elem)
+                if np.equal(elem, restricted_color).all():
+                    n += 1
+        if self.debug: print("Found this many restricted pixels: ", n)
+        return n < 2
 
 if __name__ == '__main__':
     scrnshts = [
-        "./screenshots/blade_examples/Screenshot 2024-12-10 193230.png", # Sparkle's turn, Healthy
-        "./screenshots/blade_examples/Screenshot 2024-12-10 193245.png", # Blade's turn, Healthy
-        "./screenshots/blade_examples/Screenshot 2024-12-10 193316.png", # Blade's turn, Healthy
-        "./screenshots/blade_examples/Screenshot 2024-12-13 135933.png", # Nobody's turn, Healthy
-        "screenshots/blade_examples/Screenshot 2024-12-13 141929.png" # Bronya's turn, Not healthy
+        "./screenshots/blade_examples/Screenshot 2024-12-10 193230.png", # Sparkle's turn, Healthy, Can Skill, No ults
+        "./screenshots/blade_examples/Screenshot 2024-12-10 193245.png", # Blade's turn, Healthy, Can Skill, No ults
+        "./screenshots/blade_examples/Screenshot 2024-12-10 193316.png", # Blade's turn, Healthy, Cannot Skill, No ults
+        "./screenshots/blade_examples/Screenshot 2024-12-13 135933.png", # Nobody's turn, Healthy, Can Skill, No ults
+        "./screenshots/blade_examples/Screenshot 2024-12-13 141929.png", # Bronya's turn, Not healthy, Can Skill, Just Aventurine (Jade) ult
+        "./screenshots/blade_examples\Screenshot 2024-12-17 142415.png" # Blade's turn, Not Healthy, Cannot Skill, All ults
     ]
     for scrnsht in scrnshts:
         print(f"Reading {scrnsht} ...")
@@ -149,4 +194,9 @@ if __name__ == '__main__':
         screen_reader = ScreenReader(debug=True)
         print(f"It is {screen_reader.read_action_order(scrnsht)}'s turn.")
         print(f"Are we healthy? {screen_reader.read_team_health(scrnsht)}")
+        print(f"Can we skill? {screen_reader.read_skill_restriction(scrnsht)}")
+        print("We have the following ults:")
+        ults = screen_reader.read_ults(scrnsht)
+        for char, is_ready in ults:
+            print(f"{char}: {is_ready}")
         print("---------------------------")

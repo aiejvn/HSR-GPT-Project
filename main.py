@@ -1,6 +1,7 @@
 from openai import OpenAI
 from dotenv import load_dotenv, find_dotenv
 import os
+from typing import List, Tuple
 
 class Controller:
     
@@ -30,7 +31,7 @@ You have 2 laws:
 2. Keep BLADE as effective as possible except where it conflicts with the first law.\n""",
         }
     ] 
-        # This is just DeepRL with extra steps.
+        # This is just a reward function with extra steps.
         # We tell it the units are skill points, this is actually just the reward we want to give it.
         
         # The laws are mostly cherry on top - it may be possible to operate entirely w/o them.
@@ -41,34 +42,56 @@ You have 2 laws:
             "BUFF ALLY":-1,
             "BUFF SELF":-1,
             "GIVE ALLIES SHIELD":-1,
+            "AVENTURINE ULT":0,
+            "BRONYA ULT":0,
+            "SPARKLE ULT":0,
+            "BLADE ULT":0,
         }
         
+        ult_names = ["AVENTURINE ULT", "BRONYA ULT", "SPARKLE ULT", "BLADE ULT"]
+        
         self.knows = {
-            "AVENTURINE":["WEAK ATTACK ENEMY", "GIVE ALLIES SHIELD"],
-            "BRONYA":["WEAK ATTACK ENEMY", "BUFF ALLY"],
-            "SPARKLE":["WEAK ATTACK ENEMY", "BUFF ALLY"],
-            "BLADE":["STRONG ATTACK ENEMY", "BUFF SELF"],
+            "AVENTURINE":["WEAK ATTACK ENEMY", "GIVE ALLIES SHIELD"] + ult_names,
+            "BRONYA":["WEAK ATTACK ENEMY", "BUFF ALLY"] + ult_names,
+            "SPARKLE":["WEAK ATTACK ENEMY", "BUFF ALLY"] + ult_names,
+            "BLADE":["STRONG ATTACK ENEMY", "BUFF SELF"] + ult_names,
         }
     
-    def find_move_in_msg(self, msg):
+    def find_move_in_msg(self, msg, char):
         # Final move typically comes last so we want to traverse backwards, looking for moves
         lines = msg.split('\n')
         n = len(lines) - 1
         for i in range(n, -1, -1):
             cur = lines[i]
-            for move in self.moves:
+            for move in self.knows[char]:
                 if move in cur:
                     return move
         
         # If no move found, return whole message for debug purposes.
         return msg
 
-    def get_move(self, char:str, is_health_good:bool, sp:int)->str:
+    def get_move(self, char:str, is_health_good:bool, sp:int, can_skill:bool, ult_status:List[Tuple[str, bool]])->str:
         message = f"You are currently playing as {char}. You have {str(7 - sp)} skill points. "
         if is_health_good: 
             message += "Everyone has a shield. "
         else:
             message += "We do not have a shield. "
+        if not can_skill:
+            message += f"We may not use {self.knows[char][1]}. "
+        
+        for char, ult in ult_status:
+            if ult:
+                message += f"{char} ULT is ready. "
+                match char:
+                    case "AVENTURINE": 
+                        message += "AVENTURINE ULT makes BLADE significantly more effective. "
+                    case "BRONYA":
+                        message += "BRONYA ULT makes BLADE significantly more effective. "
+                    case "SPARKLE":
+                        message += "SPARKLE ULT makes BLADE significantly more effective AND spends 4 skill points. "
+                    case "BLADE":
+                        message += "BLADE ULT makes BLADE more effective than using BUFF SELF or STRONG ATTACK ENEMY. "
+            
         message += "Give only one move. "
         
         self.messages.append(
@@ -96,14 +119,18 @@ You have 2 laws:
         # Aventurine is the prime culprit for breaking this rule. 
         
         n_errors = 1
-        while self.find_move_in_msg(res) not in self.knows[char] or self.moves[self.find_move_in_msg(res)] < 0 and int(sp) == 0:
+        while self.find_move_in_msg(res, char) not in self.knows[char] or self.moves[self.find_move_in_msg(res, char)] < 0 and int(sp) == 0 or (self.find_move_in_msg(res, char) == self.knows[char][1] and not can_skill):
             warning = res
             warning += " \nYou made an illegal move."
-            if self.find_move_in_msg not in self.knows[char]:
+            if self.find_move_in_msg(res, char) not in self.knows[char]:
                 warning += f" {char} cannot use that move."
-            elif self.moves[self.find_move_in_msg(res)] < 0 and int(sp) == 0:
+                
+            elif self.moves[self.find_move_in_msg(res, char)] < 0 and int(sp) == 0:
                 warning += " You have too many skill points so you cannot use that move."
                 # Normally we tell it that it has no skill points. We also inverted costs, so we should also invert this as well
+            
+            elif self.find_move_in_msg(res, char) == self.knows[char][1] and not can_skill: # mainly for when the bot tries to blade skill, but we cannot
+                warning += " You cannot use that move right now."
             warning += " Try again."    
             
             
@@ -128,7 +155,7 @@ You have 2 laws:
                 res = "Request failed (for some unknown reason)."
                 print(res)
                 
-            if self.find_move_in_msg(res) in self.knows[char] and self.moves[self.find_move_in_msg(res)] >= 0:
+            if self.find_move_in_msg(res, char) in self.knows[char] and self.moves[self.find_move_in_msg(res, char)] >= 0:
                 for i in range(n_errors):
                     self.messages.pop() # remove validator messages
                 break
@@ -157,7 +184,16 @@ if __name__ == "__main__":
         else:
             is_health_good = False
         sp = int(input("How many skill points do we have? "))
-        result = ct.get_move(char=char, is_health_good=is_health_good, sp=sp)
+        
+        can_skill = input("Can we use skill? (y/n) ")
+        can_skill = True if can_skill == 'y' else False
+        
+        ults = []
+        for char in ['AVENTURINE', 'BRONYA', 'SPARKLE', 'BLADE']:
+            ult_status = input(f"Is {char} ultimate ready? (y/n) ")
+            ults.append([char, ult_status == 'y'])
+        
+        result = ct.get_move(char=char, is_health_good=is_health_good, sp=sp, can_skill = can_skill, ult_status=ults)
         print(result)
-        print(ct.find_move_in_msg(msg=result))
+        print(ct.find_move_in_msg(msg=result, char=char))
         
