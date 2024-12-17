@@ -17,22 +17,25 @@ class Controller:
 
 These are the moves each character knows:
 
-AVENTURINE: { "WEAK ATTACK ENEMY":+1, "GIVE ALLIES SHIELD":-1 }
+AVENTURINE: { "WEAK ATTACK ENEMY":0, "GIVE ALLIES SHIELD":0 }
 
-BRONYA: { "WEAK ATTACK ENEMY":+1, "BUFF ALLY":-1 }
+BRONYA: {  "WEAK ATTACK ENEMY":-1, "BUFF ALLY":+1 }
 
-SPARKLE: { "WEAK ATTACK ENEMY":+1, "BUFF ALLY":-1 }
+SPARKLE: { "WEAK ATTACK ENEMY":-1, "BUFF ALLY":+1 }
 
-BLADE: { "STRONG ATTACK ENEMY":0, "BUFF SELF":-1 } 
+BLADE: { "STRONG ATTACK ENEMY":0, "BUFF SELF":+1 } 
 
-You have 3 laws:
+You have 2 laws:
 1. All allies must always have a shield.
-2. You must buff as BRONYA or SPARKLE except where it conflicts with the first law.
-3. You must buff BLADE except where it conflicts with the first or second law.\n""",
+2. Keep BLADE as effective as possible except where it conflicts with the first law.\n""",
         }
-    ] # Thanks, Asimov.
+    ] 
+        # This is just DeepRL with extra steps.
+        # We tell it the units are skill points, this is actually just the reward we want to give it.
         
-        self.moves = { # moves w/ costs
+        # The laws are mostly cherry on top - it may be possible to operate entirely w/o them.
+        
+        self.moves = { # moves w/ (REAL) costs
             "STRONG ATTACK ENEMY":0,
             "WEAK ATTACK ENEMY":1,
             "BUFF ALLY":-1,
@@ -61,7 +64,7 @@ You have 3 laws:
         return msg
 
     def get_move(self, char:str, is_health_good:bool, sp:int)->str:
-        message = f"You are currently playing as {char}. You have {sp} skill points. "
+        message = f"You are currently playing as {char}. You have {str(7 - sp)} skill points. "
         if is_health_good: 
             message += "Everyone has a shield. "
         else:
@@ -94,11 +97,13 @@ You have 3 laws:
         
         n_errors = 1
         while self.find_move_in_msg(res) not in self.knows[char] or self.moves[self.find_move_in_msg(res)] < 0 and int(sp) == 0:
-            warning = "You made an illegal move."
+            warning = res
+            warning += " \nYou made an illegal move."
             if self.find_move_in_msg not in self.knows[char]:
-                warning += f" You made an illegal move. {char} cannot use that move."
+                warning += f" {char} cannot use that move."
             elif self.moves[self.find_move_in_msg(res)] < 0 and int(sp) == 0:
-                warning += " You have 0 skill points so you cannot use that move."
+                warning += " You have too many skill points so you cannot use that move."
+                # Normally we tell it that it has no skill points. We also inverted costs, so we should also invert this as well
             warning += " Try again."    
             
             
@@ -151,7 +156,7 @@ if __name__ == "__main__":
             is_health_good = True
         else:
             is_health_good = False
-        sp = input("How many skill points do we have? ")
+        sp = int(input("How many skill points do we have? "))
         result = ct.get_move(char=char, is_health_good=is_health_good, sp=sp)
         print(result)
         print(ct.find_move_in_msg(msg=result))
