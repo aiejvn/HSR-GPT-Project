@@ -14,5 +14,5 @@ Behavior Loop:
 ## TODO's:
 - [ ] Feed active ultimates + special stage abilities into the bot
 - [ ] Distinguish the characters by unique colors only present in their design instead of measuring SSIM (Structural Similarity)
- * The characters are actually very similar, and putting the image in monochrome only worsens this. 
+    * The characters are actually very similar, and putting the image in monochrome only worsens this. 
 - [ ] Experiment with different LLMs to see who is the best at playing HSR (out of the box
