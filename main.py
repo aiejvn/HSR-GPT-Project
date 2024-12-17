@@ -26,8 +26,8 @@ SPARKLE: { "WEAK ATTACK ENEMY":+1, "BUFF ALLY":-1 }
 BLADE: { "STRONG ATTACK ENEMY":0, "BUFF SELF":-1 } 
 
 You have 3 laws:
-1. You may not let a character die.
-2. You may not use a weak attack as BRONYA or SPARKLE except where it conflicts with the first law.
+1. All allies must always have a shield.
+2. You must buff as BRONYA or SPARKLE except where it conflicts with the first law.
 3. You must buff BLADE except where it conflicts with the first or second law.\n""",
         }
     ] # Thanks, Asimov.
@@ -38,6 +38,13 @@ You have 3 laws:
             "BUFF ALLY":-1,
             "BUFF SELF":-1,
             "GIVE ALLIES SHIELD":-1,
+        }
+        
+        self.knows = {
+            "AVENTURINE":["WEAK ATTACK ENEMY", "GIVE ALLIES SHIELD"],
+            "BRONYA":["WEAK ATTACK ENEMY", "BUFF ALLY"],
+            "SPARKLE":["WEAK ATTACK ENEMY", "BUFF ALLY"],
+            "BLADE":["STRONG ATTACK ENEMY", "BUFF SELF"],
         }
     
     def find_move_in_msg(self, msg):
@@ -50,15 +57,15 @@ You have 3 laws:
                 if move in cur:
                     return move
         
-        # If no move found, just return the entire message for debug purposes.
+        # If no move found, return whole message for debug purposes.
         return msg
 
     def get_move(self, char:str, is_health_good:bool, sp:int)->str:
         message = f"You are currently playing as {char}. You have {sp} skill points. "
         if is_health_good: 
-            message += "No characters will die. "
+            message += "Everyone has a shield. "
         else:
-            message += "Someone will die. "
+            message += "We do not have a shield. "
         message += "Give only one move. "
         
         self.messages.append(
@@ -79,16 +86,26 @@ You have 3 laws:
             res = "Request failed (for some unknown reason)."
             print(res)
             
-        # Debug code
-            
+        # if the bot makes a move that a character doesn't know, tell it that and make it try again.
+            # if this succeeds, then the move must exist
         # if the bot makes a sp- move on 0sp, tell it that and make it try again.
         # There is a decently high chance the bot breaks the first rule. This prevents it from doing so.
         # Aventurine is the prime culprit for breaking this rule. 
-        while self.find_move_in_msg(res) in self.moves and self.moves[self.find_move_in_msg(res)] < 0 and int(sp) == 0:
+        
+        n_errors = 1
+        while self.find_move_in_msg(res) not in self.knows[char] or self.moves[self.find_move_in_msg(res)] < 0 and int(sp) == 0:
+            warning = "You made an illegal move."
+            if self.find_move_in_msg not in self.knows[char]:
+                warning += f" You made an illegal move. {char} cannot use that move."
+            elif self.moves[self.find_move_in_msg(res)] < 0 and int(sp) == 0:
+                warning += " You have 0 skill points so you cannot use that move."
+            warning += " Try again."    
+            
+            
             self.messages.append(
                 {
                     "role": "user",
-                    "content": "You made an illegal move. You have 0 skill points, so you cannot use that move. Try again.",
+                    "content": warning,
                 }
             )
             
@@ -102,13 +119,17 @@ You have 3 laws:
                 
                 if self.debug: print("Convo:", self.messages) 
                 
-                self.messages.pop() # remove validator message
             else:
                 res = "Request failed (for some unknown reason)."
                 print(res)
                 
-            if self.find_move_in_msg(res) in self.moves and self.moves[self.find_move_in_msg(res)] >= 0:
+            if self.find_move_in_msg(res) in self.knows[char] and self.moves[self.find_move_in_msg(res)] >= 0:
+                for i in range(n_errors):
+                    self.messages.pop() # remove validator messages
                 break
+            n_errors += 1
+        
+        
         
         if self.debug: print("Convo:", self.messages)
             

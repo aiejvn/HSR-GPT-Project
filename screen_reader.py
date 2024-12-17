@@ -86,6 +86,7 @@ class ScreenReader():
         remaining = math.ceil(sum_w) - sum_w
         weights.append(remaining) # chance of 'Nobody'
         weights = weights / sum(weights)
+        
         population = ['AVENTURINE', 'BRONYA', 'SPARKLE', 'BLADE', 'NOBODY']
         cur_char = random.choices(population, weights, k=1)
         
