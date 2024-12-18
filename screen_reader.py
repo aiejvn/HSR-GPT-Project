@@ -3,7 +3,7 @@ from PIL import Image
 import numpy as np
 import random
 import math
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 class ScreenReader():
     def __init__(self, debug=False):
@@ -58,20 +58,7 @@ class ScreenReader():
             "BLADE":[927, 987, 927 + 65, 987 + 61],
         }
         
-    def ssim_read(self, path: str) -> str:
-        img = Image.open(path)
-        if self.img_mode == 'RGB': img = img.convert('RGB')
-        elif self.img_mode == 'CMYK': img = img.convert('CMYK')
-        
-        current_turn = img.crop([73, 17, 73+94, 17+83]) # [left bound, up bound, right bound, low bound]
-        
-        # current_turn.show()
-        
-        current_icon = np.array(current_turn) # np array for ssim calc
-        # current_icon = cv2.resize(current_icon, self.target_dim)
-        
-        # TODO: Change to weighted random pick based on ssim indexes
-        # cur_char = "Nobody"
+    def ssim_read(self, current_icon) -> str:
         weights = []
         # best_ssim = 0.27 # we want ssim values close to 0 (like cosine similarity). 
         #                 # also, in testing it seems that correct ssim scores are all under 0.28. may need tweaking
@@ -106,23 +93,57 @@ class ScreenReader():
         
         return cur_char[0]
 
-    def read_action_order(self, path: str) -> str:
-        # Use cv2 to read whoever is currently going in action order
-        # If it matches one of our allies, then it's their turn
+    def pixel_read(self, current_icon) -> str:
         
-        # Errors from this function are soft-illegal.
-        # Making a sp move on 0 sp cannot ever be done, so it is hard illegal
-        # However, using ability as Sparkle when we are actually Aventurine (assuming valid sp) still works - just is unoptimal  
-        return self.ssim_read(path)
-    
-        # Potential Fix - assign each character a color that only appears in their icon (i.e. aventurine - some shade of yellow, bronya, some shade of green)
-        # Look for this color in the icons
+        # These colors suck - find better ones
+        AVENTURINE_COLOR = [74, 178, 183] if self.img_mode == 'RGB' else [60, 3, 0, 28] # Some yellow
+        BRONYA_COLOR = [91, 87, 103] if self.img_mode == 'RGB' else [12, 16, 0, 60] # No grey???
+        SPARKLE_COLOR = [251, 152, 213] if self.img_mode == 'RGB' else [0, 39, 19, 2] # THERE'S TOO MUCH RED IN OUR IMAGES
+        BLADE_COLOR = [113, 57, 63] if self.img_mode == 'RGB' else [0, 50, 44, 56] # No brown???
+        
+        n = [0, 0, 0, 0]
+        acceptable_diff = [30] * 3 if self.img_mode == 'RGB' else [30] * 4
+        for row in current_icon:
+            for pixel in row:
+                if (abs(pixel - AVENTURINE_COLOR) < acceptable_diff).all():
+                    n[0] += 1
+                elif (abs(pixel - BRONYA_COLOR) < acceptable_diff).all():
+                    n[1] += 1
+                elif (abs(pixel - SPARKLE_COLOR) < acceptable_diff).all():
+                    n[2] += 1
+                elif (abs(pixel - BLADE_COLOR) < acceptable_diff).all():
+                    n[3] += 1
+        
+        if self.debug:
+            print("Pixels found for characters:", n)
+        
+        match n.index(max(n)):
+            case 0:
+                return "AVENTURINE"
+            case 1:
+                return "BRONYA"
+            case 2:
+                return "SPARKLE" 
+            case 3:
+                return "BLADE"
+
+    def read_action_order(self, path: str) -> str:
+        img = Image.open(path)
+        if self.img_mode == 'RGB': img = img.convert('RGB')
+        elif self.img_mode == 'CMYK': img = img.convert('CMYK')
+        
+        current_turn = img.crop([73, 17, 73+94, 17+83]) # [left bound, up bound, right bound, low bound]
+        
+        # current_turn.show()
+        
+        current_icon = np.array(current_turn) # np array for calc
         
         # TODO: Use algorithms to find unique colors amongst the cast and implement the above
         # Aventurine - Yellow (prob)
         # Bronya - Grey? (her palette is kinda common ngl)
         # Sparkle - Red or Brown (prob)
         # Blade - Brown? (his palette is also kinda common ngl)
+        return self.pixel_read(current_icon)
         
     def read_team_health(self, path:str) -> bool:
         # Measure how much white (shield) we see in healthbars
@@ -200,9 +221,9 @@ class ScreenReader():
         if self.debug: print(f"Found this many white pixels for stage ult:", n)
         
         return n >= 100 # many white pixels -> stage art is shining -> ult is ready
-            
-
+     
 if __name__ == '__main__':
+    print("Program is starting...")
     scrnshts = [
         "./screenshots/blade_examples/Screenshot 2024-12-10 193230.png", # Sparkle's turn, Healthy, Can Skill, No ults, no stage ult
         "./screenshots/blade_examples/Screenshot 2024-12-10 193245.png", # Blade's turn, Healthy, Can Skill, No ults, no stage ult
@@ -226,3 +247,4 @@ if __name__ == '__main__':
         for char, is_ready in ults:
             print(f"{char}: {is_ready}")
         print("---------------------------")
+    
