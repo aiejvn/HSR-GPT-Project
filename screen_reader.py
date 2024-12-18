@@ -118,6 +118,11 @@ class ScreenReader():
         # Potential Fix - assign each character a color that only appears in their icon (i.e. aventurine - some shade of yellow, bronya, some shade of green)
         # Look for this color in the icons
         
+        # TODO: Use algorithms to find unique colors amongst the cast and implement the above
+        # Aventurine - Yellow (prob)
+        # Bronya - Grey? (her palette is kinda common ngl)
+        # Sparkle - Red or Brown (prob)
+        # Blade - Brown? (his palette is also kinda common ngl)
         
     def read_team_health(self, path:str) -> bool:
         # Measure how much white (shield) we see in healthbars
@@ -177,15 +182,35 @@ class ScreenReader():
                     n += 1
         if self.debug: print("Found this many restricted pixels: ", n)
         return n < 2
+    
+    def read_stage_ability(self, path:str) -> bool:
+        # Same as checking ults but just for this
+        # Essentially an ult
+        img = Image.open(path).convert(self.img_mode)
+        img = img.crop([1783, 747, 1783+57, 747+56])
+        img = np.array(img)
+        
+        n = 0
+        check_color = [255, 255, 255] if self.img_mode == 'RGB' else [0, 0, 0, 0]
+        acceptable_diff = [30] * 3 if self.img_mode == 'RGB' else [30] * 4
+        for row in img: # search for white pixels
+            for elem in row:
+                if (abs(elem - check_color) < acceptable_diff).all():
+                    n += 1
+        if self.debug: print(f"Found this many white pixels for stage ult:", n)
+        
+        return n >= 100 # many white pixels -> stage art is shining -> ult is ready
+            
 
 if __name__ == '__main__':
     scrnshts = [
-        "./screenshots/blade_examples/Screenshot 2024-12-10 193230.png", # Sparkle's turn, Healthy, Can Skill, No ults
-        "./screenshots/blade_examples/Screenshot 2024-12-10 193245.png", # Blade's turn, Healthy, Can Skill, No ults
-        "./screenshots/blade_examples/Screenshot 2024-12-10 193316.png", # Blade's turn, Healthy, Cannot Skill, No ults
-        "./screenshots/blade_examples/Screenshot 2024-12-13 135933.png", # Nobody's turn, Healthy, Can Skill, No ults
-        "./screenshots/blade_examples/Screenshot 2024-12-13 141929.png", # Bronya's turn, Not healthy, Can Skill, Just Aventurine (Jade) ult
-        "./screenshots/blade_examples\Screenshot 2024-12-17 142415.png" # Blade's turn, Not Healthy, Cannot Skill, All ults
+        "./screenshots/blade_examples/Screenshot 2024-12-10 193230.png", # Sparkle's turn, Healthy, Can Skill, No ults, no stage ult
+        "./screenshots/blade_examples/Screenshot 2024-12-10 193245.png", # Blade's turn, Healthy, Can Skill, No ults, no stage ult
+        "./screenshots/blade_examples/Screenshot 2024-12-10 193316.png", # Blade's turn, Healthy, Cannot Skill, No ults, no stage ult
+        "./screenshots/blade_examples/Screenshot 2024-12-13 135933.png", # Nobody's turn, Healthy, Can Skill, No ults, no stage ult
+        "./screenshots/blade_examples/Screenshot 2024-12-13 141929.png", # Bronya's turn, Not healthy, Can Skill, Just Aventurine (Jade) ult, no stage ult
+        "./screenshots/blade_examples/Screenshot 2024-12-17 142415.png", # Blade's turn, Not Healthy, Cannot Skill, All ults, no stage ult
+        "./screenshots/blade_examples/Screenshot 2024-12-17 214514.png" # Aventurine's turn, Healthy, Can Skill, All Ults, Stage Ult
     ]
     for scrnsht in scrnshts:
         print(f"Reading {scrnsht} ...")
@@ -195,6 +220,7 @@ if __name__ == '__main__':
         print(f"It is {screen_reader.read_action_order(scrnsht)}'s turn.")
         print(f"Are we healthy? {screen_reader.read_team_health(scrnsht)}")
         print(f"Can we skill? {screen_reader.read_skill_restriction(scrnsht)}")
+        print(f"Can we stage ult? {screen_reader.read_stage_ability(scrnsht)}")
         print("We have the following ults:")
         ults = screen_reader.read_ults(scrnsht)
         for char, is_ready in ults:

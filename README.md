@@ -1,5 +1,6 @@
 # HSR-GPT-Project
  A short project testing if ChatGPT can play Honkai: Star Rail (HSR).
+ Running code as admin is a MUST.
 
 Behavior Loop:
 
@@ -12,7 +13,7 @@ Behavior Loop:
 4. action_controller translate this move into key presses. Inputs this into game and waits some time for the animations to finish.
 
 ## TODO's:
-- [ ] Feed active ultimates + special stage abilities into the bot
+- [x] Feed active ultimates + special stage abilities into the bot
 - [ ] Distinguish the characters by unique colors only present in their design instead of measuring SSIM (Structural Similarity)
     * The characters are actually very similar, and putting the image in monochrome only worsens this. 
 - [ ] Experiment with different LLMs to see who is the best at playing HSR (out of the box
