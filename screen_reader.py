@@ -4,12 +4,13 @@ import numpy as np
 import random
 import math
 from typing import List, Tuple, Dict
+import pytesseract
 
 class ScreenReader():
-    def __init__(self, debug=False):
+    def __init__(self, debug=False, img__palette_mode='RGB'):
         # Shrunken icons of just the character (pulled from online)
         # Should be similar size to that of bounding box for action space
-        self.img_mode = 'CMYK' # RGB or CMYK
+        self.img_mode = img__palette_mode # RGB or CMYK
         self.icons = {
             "AVENTURINE":"./icons/aventurine-character_icon.png",
             "BRONYA":"./icons/bronya-item-2_icon.png",
@@ -57,6 +58,8 @@ class ScreenReader():
             "SPARKLE":[704, 987, 704 + 65, 987 + 61],
             "BLADE":[927, 987, 927 + 65, 987 + 61],
         }
+        pytesseract.pytesseract.tesseract_cmd = r'C:\Users\noten\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
+
         
     def ssim_read(self, current_icon) -> str:
         weights = []
@@ -143,7 +146,10 @@ class ScreenReader():
         # Bronya - Grey? (her palette is kinda common ngl)
         # Sparkle - Red or Brown (prob)
         # Blade - Brown? (his palette is also kinda common ngl)
-        return self.pixel_read(current_icon)
+        
+        # return self.pixel_read(current_icon)
+        
+        return self.ssim_read(current_icon)
         
     def read_team_health(self, path:str) -> bool:
         # Measure how much white (shield) we see in healthbars
@@ -194,15 +200,16 @@ class ScreenReader():
         img = img.crop([1786, 941, 1786+37, 941+36])
         # img.show()
         img = np.array(img)
+        acceptable_diff = [30] * 3 if self.img_mode == 'RGB' else [30] * 4
         restricted_color = [99, 60, 45] if self.img_mode == 'RGB' else [14, 42, 102, 0]
         n = 0
         for row in img:
             for elem in row:
                 # print(elem)
-                if np.equal(elem, restricted_color).all():
+                if (abs(elem - restricted_color) < acceptable_diff).all():
                     n += 1
         if self.debug: print("Found this many restricted pixels: ", n)
-        return n < 2
+        return n < 100
     
     def read_stage_ability(self, path:str) -> bool:
         # Same as checking ults but just for this
@@ -222,6 +229,20 @@ class ScreenReader():
         
         return n >= 100 # many white pixels -> stage art is shining -> ult is ready
      
+    def read_skill_points(self, path:str) -> str:
+        # Use tesseract OCR form OpenCv (or any good digit reader from OpenCV) 
+        # to read 1 digit numbers from the screen
+        # Then pass this to the model
+        img = Image.open(path).convert(mode='RGB') # only compatible mode
+        
+        start = [1399, 1067]
+        offset = [142, 43]
+        img = img.crop([start[0], start[1], start[0] + offset[0], start[1] + offset[1]])
+        
+        text = pytesseract.image_to_string(img, config="")
+        if text: return text[0]    
+        else: return "Could not read skill points."
+    
 if __name__ == '__main__':
     print("Program is starting...")
     scrnshts = [
@@ -246,5 +267,7 @@ if __name__ == '__main__':
         ults = screen_reader.read_ults(scrnsht)
         for char, is_ready in ults:
             print(f"{char}: {is_ready}")
+        sp = screen_reader.read_skill_points(scrnsht)
+        print(f"We have {sp} skill points." if sp.isnumeric() else "Could not read skill points.")
         print("---------------------------")
     

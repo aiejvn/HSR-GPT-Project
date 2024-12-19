@@ -108,6 +108,9 @@ class Environment():
                 stage_ready = self.screenreader.read_stage_ability(self.screenshot_path)
                 if stage_ready: print("Stage ult ready.")
                 
+                sp = self.screenreader.read_skill_points(self.screenshot_path)
+                if sp.isnumeric(): self.sp = int(sp) # override internal tracker if true
+                
                 move_full = self.controller.get_move(char=cur_char, is_health_good=is_healthy, sp=self.sp, can_skill=skill_available, ult_status=ults, can_stage=stage_ready)
                 move = self.controller.find_move_in_msg(move_full, cur_char)
                 print(f"We should do: {move} because {move_full}")
