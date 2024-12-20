@@ -14,6 +14,6 @@ Behavior Loop:
 
 ## TODO's:
 - [x] Feed active ultimates + special stage abilities into the bot
-- [ ] Distinguish the characters by unique colors only present in their design instead of measuring SSIM (Structural Similarity)
+- [X] Distinguish the characters by the distribution of colors instead of measuring SSIM (Structural Similarity)
     * The characters are actually very similar, and putting the image in monochrome only worsens this. 
-- [ ] Train and fine-tune a simple model to identify whose turn it is.
+- [ ] Send bot to fight Phantylia (again) - test which difficulty we can do vs what difficulty HSR built-in bot can do

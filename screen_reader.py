@@ -5,6 +5,7 @@ import random
 import math
 from typing import List, Tuple, Dict
 import pytesseract
+from scipy import stats
 
 class ScreenReader():
     def __init__(self, debug=False, img__palette_mode='RGB'):
@@ -59,6 +60,29 @@ class ScreenReader():
             "BLADE":[927, 987, 927 + 65, 987 + 61],
         }
         pytesseract.pytesseract.tesseract_cmd = r'C:\Users\noten\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
+        
+        self.char_metrics = {
+            "AVENTURINE": {
+                "mean": [187.47268, 173.610284, 163.784928],
+                "median": [209, 192, 177],
+                "mode": [249, 231, 224]
+            },
+            "BRONYA": {
+                "mean": [171.930812, 157.011252, 163.004484],
+                "median": [178, 164, 172],
+                "mode": [250, 238, 239]
+            },
+            "SPARKLE": {
+                "mean": [158.114348, 130.871488, 133.941088],
+                "median": [155, 109, 118],
+                "mode": [253, 242, 239]
+            },
+            "BLADE": {
+                "mean": [131.996096, 119.450136, 121.90904],
+                "median": [102, 80,  93],
+                "mode": [250, 239, 233]
+            },
+        }
 
         
     def ssim_read(self, current_icon) -> str:
@@ -96,60 +120,52 @@ class ScreenReader():
         
         return cur_char[0]
 
-    def pixel_read(self, current_icon) -> str:
+    def metric_read(self, path:str, metric='median') -> str:
         
         # These colors suck - find better ones
-        AVENTURINE_COLOR = [74, 178, 183] if self.img_mode == 'RGB' else [60, 3, 0, 28] # Some yellow
-        BRONYA_COLOR = [91, 87, 103] if self.img_mode == 'RGB' else [12, 16, 0, 60] # No grey???
-        SPARKLE_COLOR = [251, 152, 213] if self.img_mode == 'RGB' else [0, 39, 19, 2] # THERE'S TOO MUCH RED IN OUR IMAGES
-        BLADE_COLOR = [113, 57, 63] if self.img_mode == 'RGB' else [0, 50, 44, 56] # No brown???
+        # TODO: Perform EDA (exploratory data analysis) on color distributions of screenshots w/ chars in them
+        # Check mean, median, and mode of images - we want metrics resistant to outliers (likely median & mode)
+        # If median &/or mode line up w/ a specific character, then that should be the one
+        img = Image.open(scrnsht).convert(screen_reader.img_mode).crop([100, 39, 100+29, 39+62]).resize(size=[500, 500], resample=Image.NEAREST)
+        # img.show()
+        img = np.array(img)
         
-        n = [0, 0, 0, 0]
-        acceptable_diff = [30] * 3 if self.img_mode == 'RGB' else [30] * 4
-        for row in current_icon:
-            for pixel in row:
-                if (abs(pixel - AVENTURINE_COLOR) < acceptable_diff).all():
-                    n[0] += 1
-                elif (abs(pixel - BRONYA_COLOR) < acceptable_diff).all():
-                    n[1] += 1
-                elif (abs(pixel - SPARKLE_COLOR) < acceptable_diff).all():
-                    n[2] += 1
-                elif (abs(pixel - BLADE_COLOR) < acceptable_diff).all():
-                    n[3] += 1
+        img = img.reshape([-1, 1, 3]) # all pixels together in one row
         
-        if self.debug:
-            print("Pixels found for characters:", n)
+        mean, median, mode = np.mean(img, axis=0), np.median(img, axis=0), stats.mode(img).mode
         
-        match n.index(max(n)):
-            case 0:
-                return "AVENTURINE"
-            case 1:
-                return "BRONYA"
-            case 2:
-                return "SPARKLE" 
-            case 3:
-                return "BLADE"
+        mean_median_mode = {
+            "mean": mean,
+            "median": median, 
+            "mode": mode
+        }
+        actual = mean_median_mode[metric]
+        
+        # print(np.mean(img, axis=0))
+        # print(np.median(img, axis=0))
+        # print(stats.mode(img).mode, stats.mode(img).count) # most frequent color found
+        
+        acceptable_diff = [10] * 3 if self.img_mode == 'RGB' else [10] *4
+        for char in self.char_metrics:
+            cur_metric = self.char_metrics[char][metric]
+            diff = abs(cur_metric - actual)
+            if (diff < acceptable_diff).all():
+                return char
+        
+        return "Nobody"
 
     def read_action_order(self, path: str) -> str:
-        img = Image.open(path)
-        if self.img_mode == 'RGB': img = img.convert('RGB')
-        elif self.img_mode == 'CMYK': img = img.convert('CMYK')
+        # img = Image.open(path)
+        # if self.img_mode == 'RGB': img = img.convert('RGB')
+        # elif self.img_mode == 'CMYK': img = img.convert('CMYK')
         
-        current_turn = img.crop([73, 17, 73+94, 17+83]) # [left bound, up bound, right bound, low bound]
+        # current_turn = img.crop([73, 17, 73+94, 17+83]) # [left bound, up bound, right bound, low bound]
+        # current_turn.show()        
+        # current_icon = np.array(current_turn) # np array for calc
+        # return self.ssim_read(current_icon)
         
-        # current_turn.show()
+        return self.metric_read(path=path, metric='median')
         
-        current_icon = np.array(current_turn) # np array for calc
-        
-        # TODO: Use algorithms to find unique colors amongst the cast and implement the above
-        # Aventurine - Yellow (prob)
-        # Bronya - Grey? (her palette is kinda common ngl)
-        # Sparkle - Red or Brown (prob)
-        # Blade - Brown? (his palette is also kinda common ngl)
-        
-        # return self.pixel_read(current_icon)
-        
-        return self.ssim_read(current_icon)
         
     def read_team_health(self, path:str) -> bool:
         # Measure how much white (shield) we see in healthbars
@@ -254,11 +270,10 @@ if __name__ == '__main__':
         "./screenshots/blade_examples/Screenshot 2024-12-17 142415.png", # Blade's turn, Not Healthy, Cannot Skill, All ults, no stage ult
         "./screenshots/blade_examples/Screenshot 2024-12-17 214514.png" # Aventurine's turn, Healthy, Can Skill, All Ults, Stage Ult
     ]
+    screen_reader = ScreenReader(debug=True)
     for scrnsht in scrnshts:
         print(f"Reading {scrnsht} ...")
-
-        # We will internally track skill points.    
-        screen_reader = ScreenReader(debug=True)
+    
         print(f"It is {screen_reader.read_action_order(scrnsht)}'s turn.")
         print(f"Are we healthy? {screen_reader.read_team_health(scrnsht)}")
         print(f"Can we skill? {screen_reader.read_skill_restriction(scrnsht)}")
@@ -269,5 +284,20 @@ if __name__ == '__main__':
             print(f"{char}: {is_ready}")
         sp = screen_reader.read_skill_points(scrnsht)
         print(f"We have {sp} skill points." if sp.isnumeric() else "Could not read skill points.")
+        
+        
+        # Find the mean, median, and mode of each char
+        # img = Image.open(scrnsht).convert(screen_reader.img_mode).crop([100, 39, 100+29, 39+62]).resize(size=[500, 500], resample=Image.NEAREST)
+        # img.show()
+        # img = np.array(img)
+        
+        # img = img.reshape([-1, 1, 3]) # all pixels together in one row
+        
+        # print(np.mean(img, axis=0))
+        # print(np.median(img, axis=0))
+        # print(stats.mode(img).mode, stats.mode(img).count) # most frequent color found
+        
+        # # acceptable difference seems to be 10 for each channel
+        
         print("---------------------------")
     
