@@ -17,7 +17,7 @@ Behavior Loop:
 - [X] Distinguish the characters by the distribution of colors instead of measuring SSIM (Structural Similarity)
     * The characters are actually very similar, and putting the image in monochrome only worsens this. 
 
-## GPT4o has vanquished (Spoiler Warning):
+## Bosses GPT4o Has Beaten (Spoiler Warning):
 - Phantylia the Undying (Difficulty V)
 - "Harmonious Choir" The Great Septimus & "Embryo of Philosophy" Sunday (Difficulty V)
 - Shadow of "Feixiao" (Difficulty V)
