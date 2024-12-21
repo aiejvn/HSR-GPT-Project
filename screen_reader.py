@@ -121,12 +121,8 @@ class ScreenReader():
         return cur_char[0]
 
     def metric_read(self, path:str, metric='median') -> str:
-        
-        # These colors suck - find better ones
-        # TODO: Perform EDA (exploratory data analysis) on color distributions of screenshots w/ chars in them
-        # Check mean, median, and mode of images - we want metrics resistant to outliers (likely median & mode)
-        # If median &/or mode line up w/ a specific character, then that should be the one
-        img = Image.open(scrnsht).convert(screen_reader.img_mode).crop([100, 39, 100+29, 39+62]).resize(size=[500, 500], resample=Image.NEAREST)
+        # The less background we include in the image, the better.
+        img = Image.open(path).convert(self.img_mode).crop([100, 39, 100+29, 39+62]).resize(size=[500, 500], resample=Image.NEAREST)
         # img.show()
         img = np.array(img)
         

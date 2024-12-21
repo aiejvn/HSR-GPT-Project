@@ -79,6 +79,9 @@ class Environment():
         sleep(5)
         
         i = 0
+        metric_index = 0 
+        metrics = ['median', 'mode', 'mean']
+        num_nobodies = 0
         while i < 10:
             if take_shot: 
                 with mss.mss() as screenshot:
@@ -92,9 +95,11 @@ class Environment():
                         output = self.screenshot_path # save to path
                     )
             
-            cur_char = self.screenreader.read_action_order(self.screenshot_path)
+            cur_char = self.screenreader.metric_read(self.screenshot_path, metric=metrics[metric_index])
             print(f"Current character is {cur_char}")
-            if cur_char != 'NOBODY':
+            if cur_char in self.controller.knows: # if they're a valid team character
+                metric_index = 0 # reset to using median since it is generally the strongest 
+                
                 is_healthy = self.screenreader.read_team_health(self.screenshot_path)
                 print(f"Are we healthy?: {is_healthy}\nWe have {self.sp} skill points currently.")
                 
@@ -123,6 +128,14 @@ class Environment():
                 self.make_move(self.action_keys[move])
             else:
                 print("Nobody in team is about to go.")
+                num_nobodies += 1
+                if num_nobodies > 3:
+                    metric_index += 1
+                    if metric_index > 2: metric_index = 0
+                    num_nobodies = 0
+            print(f"Move was made using this metric: {metrics[metric_index]}.")
+
+                    
             sleep(5) # used to be 3
             if not loop: i += 1
     
@@ -154,11 +167,11 @@ class Environment():
     
     def test_keys(self):
         # Test if we can press keys:
-        print("Program is starting...")
         for key in env.action_keys['STAGE ULT']:
             KeyPress(env.key_codes[key])
     
 if __name__ == "__main__":
+    print("Program is starting...")
     env = Environment()
     env.invoke_env()
     # env.debug()

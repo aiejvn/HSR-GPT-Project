@@ -16,4 +16,8 @@ Behavior Loop:
 - [x] Feed active ultimates + special stage abilities into the bot
 - [X] Distinguish the characters by the distribution of colors instead of measuring SSIM (Structural Similarity)
     * The characters are actually very similar, and putting the image in monochrome only worsens this. 
-- [ ] Send bot to fight Phantylia (again) - test which difficulty we can do vs what difficulty HSR built-in bot can do
+
+## GPT4o has vanquished (Spoiler Warning):
+- Phantylia the Undying (Difficulty V)
+- "Harmonious Choir" The Great Septimus & "Embryo of Philosophy" Sunday (Difficulty V)
+- Shadow of "Feixiao" (Difficulty V)
