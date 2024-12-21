@@ -3,10 +3,11 @@
  Running code as admin is a MUST.
 
 ## Quickstart guide:
-1. Clone this repository from the repo or using this url: ```https://github.com/aiejvn/HSR-GPT-Project.git```
+1. Clone this repository from the repo or using this url: ```https://github.com/aiejvn/HSR-GPT-Project.git```.
 2. Create a ```.env``` file with your GPT API key inside. It should be in the same folder as ```main.py```.
-3. Open a window of Honkai : Star Rail.
-4. Run ```action_controller.py``` as admin (required so that the program can make input)
+3. ```cd``` into this project and run ```pip install -r requirements.txt```.
+4. Open a window of Honkai : Star Rail and start a combat.
+5. Run ```action_controller.py``` as admin (required so that the program can make input).
 
 ## Behavior Loop:
 
