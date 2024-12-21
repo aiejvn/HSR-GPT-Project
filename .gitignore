@@ -162,3 +162,4 @@ cython_debug/
 # Inspiration Project
 /Chat-Control
 email_self.py
+screenshots/cur_shot.png

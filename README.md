@@ -15,7 +15,7 @@
 
 3. ```action_controller``` feeds this information and internal tracker of other necessary information (i.e. skill points) into main - gets back what move to take.
 
-4. ```action_controller``` translate this move into key presses. Inputs this into game and waits some time for the animations to finish.
+4. ```action_controller``` translates this move into key presses. Inputs this into game and waits some time for the animations to finish.
 
 ## Bosses GPT4o Has Beaten (Spoiler Warning):
 - Phantylia the Undying (Difficulty V)
