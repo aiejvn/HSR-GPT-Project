@@ -21,8 +21,3 @@
 - Phantylia the Undying (Difficulty V)
 - "Harmonious Choir" The Great Septimus & "Embryo of Philosophy" Sunday (Difficulty V)
 - Shadow of "Feixiao" (Difficulty V)
-
-### TODO's:
-- [x] Feed active ultimates + special stage abilities into the bot
-- [X] Distinguish the characters by the distribution of colors instead of measuring SSIM (Structural Similarity)
-    * The characters are actually very similar, and putting the image in monochrome only worsens this. 
